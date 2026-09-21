@@ -89,7 +89,11 @@ func _apply_ideal_line_offset(target: Vector3, track_position: TrackPosition) ->
 func _physics_process(_delta: float) -> void:
 	if is_human:
 		car.move_axis = Input.get_axis("backward", "forward")
-		car.rotate_axis = Input.get_axis("left", "right") + Input.get_axis("power_left", "power_right")
+
+		var rotate_axis = Input.get_axis("left", "right")
+		if Input.is_action_pressed("power_turn"):
+			rotate_axis += sign(rotate_axis)
+		car.rotate_axis = rotate_axis
 	else:
 		var car_transform = car.transform
 

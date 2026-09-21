@@ -2,7 +2,7 @@ extends Camera3D
 
 @export var target: Node3D
 
-@export var follow_speed: float = 30.0
+@export var follow_speed: float = 50.0
 
 # the fixed ideal offset from the target
 var _ideal_local_transform: Transform3D
