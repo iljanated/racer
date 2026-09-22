@@ -48,13 +48,7 @@ func _snap_to_track() -> void:
 	if track_path == null:
 		return
 
-	var path := track_path.path3d
-	if path == null or path.curve == null:
-		push_warning("TrackDraggable could not snap because TrackPath has no Path3D curve.")
-		return
-
-	var local_position := path.global_transform.affine_inverse() * global_transform.origin
-	track_offset = path.curve.get_closest_offset(local_position)
+	track_offset = track_path.get_offset_along_track(transform.origin)
 	_apply_track_transform_at_offset()
 
 
@@ -69,13 +63,7 @@ func _apply_track_transform_at_offset() -> void:
 	if track_path == null:
 		return
 
-	var path := track_path.path3d
-	if path == null or path.curve == null:
-		push_warning("TrackDraggable could not update because TrackPath has no Path3D curve.")
-		return
-
-	var local_track_transform := path.curve.sample_baked_with_rotation(track_offset, true, true)
-	var snapped_transform := path.global_transform * local_track_transform
+	var snapped_transform := track_path.get_transform_at_offset(track_offset)
 
 	if global_transform.is_equal_approx(snapped_transform):
 		return

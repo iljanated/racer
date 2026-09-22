@@ -38,13 +38,12 @@ func _on_track_changed():
 func update_mesh_along_curve():
 	_mesh_dirty = false
 
-	if not track_path or not track_path.path3d.curve:
+	if not track_path:
 		print("Track path or curve is not available.")
 		return
 
 	print("Updating mesh along curve.")
-	var curve: Curve3D = track_path.path3d.curve
-	var total_length: float = curve.get_baked_length()
+	var total_length: float = track_path.track_length
 	
 	# Calculate how many cross-sections we need
 	var steps: int = max(2, int(total_length / segment_length))
@@ -57,7 +56,7 @@ func update_mesh_along_curve():
 	for i in range(steps + 1):
 		# Sample the curve position and orientation in path's local space
 		var offset: float = (float(i) / steps) * total_length
-		var local_transform: Transform3D = curve.sample_baked_with_rotation(offset, true, true)
+		var local_transform: Transform3D = track_path.get_transform_at_offset(offset)
 		
 		# Define the 4 points of our cross-section relative to the track frame
 		# Vector3.RIGHT (X) is the horizontal width, Vector3.UP (Y) is the wall height

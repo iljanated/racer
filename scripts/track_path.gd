@@ -3,7 +3,7 @@ extends Node
 
 class_name TrackPath
 
-@onready var path3d: Path3D = $Path3D
+@onready var path3Ds: Array[Path3D] = []
 @onready var race_manager: RaceManager = get_node("../RaceManager")
 
 @export var track_segment_length: float = 10.0
@@ -23,12 +23,16 @@ var _scratch_track_segment: TrackSegment = TrackSegment.new()
 signal track_segments_updated
 
 func _ready() -> void:
+	path3Ds.append($Path3D)
+
 	if not Engine.is_editor_hint():
 		race_manager.register_track_path(self)
-	path3d.curve.bake_interval = 5.0
-	if not path3d.is_connected("curve_changed", _on_curve_changed):
-		path3d.connect("curve_changed", _on_curve_changed)
-	_on_curve_changed()
+
+	for path3d in path3Ds:
+		path3d.curve.bake_interval = 5.0
+		if not path3d.is_connected("curve_changed", _on_curve_changed):
+			path3d.connect("curve_changed", _on_curve_changed.bind(path3d))
+		_on_curve_changed(path3d)
 
 
 func _exit_tree() -> void:
@@ -36,8 +40,14 @@ func _exit_tree() -> void:
 		race_manager.unregister_track_path(self)
 
 
-func _on_curve_changed() -> void:
-	track_length = path3d.curve.get_baked_length()
+func _get_total_track_length() -> float:
+	var total_length: float = 0.0
+	for path3d in path3Ds:
+		total_length += path3d.curve.get_baked_length()
+	return total_length
+
+func _on_curve_changed(path3d: Path3D) -> void:
+	track_length = _get_total_track_length()
 	if _track_dirty:
 		return
 	_track_dirty = true
@@ -46,6 +56,7 @@ func _on_curve_changed() -> void:
 		_update_track_segments.call_deferred()
 
 func get_track_position(point: Vector3, out_result: TrackPosition) -> void :
+	var path3d: Path3D = path3Ds[0]
 	var curve : Curve3D = path3d.curve
 	var offset: float = curve.get_closest_offset(point)
 	get_track_position_at_offset(point, offset, out_result)
@@ -63,6 +74,7 @@ func get_track_position(point: Vector3, out_result: TrackPosition) -> void :
 # disagree with get_closest_offset-based results (used elsewhere) by an
 # amount that grows with track_segment_length and curve tightness.
 func get_track_position_at_offset(point: Vector3, offset: float, out_result: TrackPosition) -> void:
+	var path3d: Path3D = path3Ds[0]
 	var curve : Curve3D = path3d.curve
 	var path_transform: Transform3D = curve.sample_baked_with_rotation(offset, true, true)
 	
@@ -75,16 +87,24 @@ func get_track_position_at_offset(point: Vector3, offset: float, out_result: Tra
 	out_result.track_segment.init(_scratch_track_segment)
 
 func get_track_transform(point: Vector3, offset: float) -> Transform3D:
+	var path3d: Path3D = path3Ds[0]
 	var curve : Curve3D = path3d.curve
 	var total_length = curve.get_baked_length()
 	var wrapped_offset: float = fmod(curve.get_closest_offset(point) + offset, total_length)
 	return curve.sample_baked_with_rotation(wrapped_offset, true, true)
 
+func get_transform_at_offset(offset: float) -> Transform3D:
+	var path3d: Path3D = path3Ds[0]
+	var curve : Curve3D = path3d.curve
+	return curve.sample_baked_with_rotation(offset, true, true)
+
 func get_offset_along_track(point: Vector3) -> float:
+	var path3d: Path3D = path3Ds[0]
 	var curve : Curve3D = path3d.curve
 	return curve.get_closest_offset(point)
 
 func get_track_segment(point: Vector3, offset: float, out_result: TrackSegment) -> void:
+	var path3d: Path3D = path3Ds[0]
 	var curve : Curve3D = path3d.curve
 	var total_offset := curve.get_closest_offset(point) + offset
 	get_track_segment_at_offset(total_offset, out_result)
@@ -120,6 +140,7 @@ func _update_track_segments() -> void:
 			for i in range(old_size, num_segments):
 				track_segments[i] = TrackSegment.new()
 
+		var path3d: Path3D = path3Ds[0]
 		var curve = path3d.curve
 
 		for i in num_segments:
